@@ -7,6 +7,7 @@ import pytest
 from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
+from scipy.signal import convolve2d
 
 
 normalize = False
@@ -14,6 +15,13 @@ threshold = 6
 max_cluster_size = 10
 leap_size = 2
 shrink_factor = 3
+
+edge_kernel = np.array([[-2, -3, -2], [-3, 20, -3], [-2, -3, -2]]) / 20
+
+
+def hough_out(img, r):
+    edges = np.abs(convolve2d(img, edge_kernel, mode="same", boundary="symm"))
+    return hough_circle(edges, radius=r, shrink_factor=shrink_factor)
 
 
 class TestHoughCircle(unittest.TestCase):
@@ -24,7 +32,8 @@ class TestHoughCircle(unittest.TestCase):
         draw_circle(img, 25, 25, 15)
 
         # Detect circles
-        hough_img = hough_circle(img, radius=15, shrink_factor=shrink_factor)
+
+        hough_img = hough_out(img, 15)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -44,7 +53,7 @@ class TestHoughCircle(unittest.TestCase):
         draw_circle(img, 5, 5, 2)
 
         # Detect circles
-        hough_img = hough_circle(img, radius=2, shrink_factor=shrink_factor)
+        hough_img = hough_img = hough_out(img, 2)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -75,7 +84,7 @@ class TestHoughCircle(unittest.TestCase):
         cv2.circle(image, center1, radius, (255, 0, 0), -1)  # Blue circle
         cv2.circle(image, center2, radius, (0, 255, 0), -1)  # Green circle
 
-        hough_img = hough_circle(image, radius=10, shrink_factor=shrink_factor)
+        hough_img = hough_img = hough_out(image, 10)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -108,7 +117,7 @@ class TestHoughCircle(unittest.TestCase):
         # Draw circle in white (BGR format)
         cv2.circle(image, center, radius, (255, 255, 255), thickness)
 
-        hough_img = hough_circle(image, radius=15, shrink_factor=shrink_factor)
+        hough_img = hough_img = hough_out(image, 15)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -140,7 +149,7 @@ class TestHoughCircle(unittest.TestCase):
         draw_circle(img, 75, 75, 15)
 
         # Detect circles
-        hough_img = hough_circle(img, radius=15, shrink_factor=shrink_factor)
+        hough_img = hough_out(img, 15)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -184,7 +193,7 @@ class TestHoughCircle(unittest.TestCase):
 
         # Apply Gaussian blur
         image = cv2.GaussianBlur(image, blur_kernel_size, 0)
-        hough_img = hough_circle(image, radius=15, shrink_factor=shrink_factor)
+        hough_img = hough_out(image, 15)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -211,7 +220,7 @@ class TestHoughCircle(unittest.TestCase):
         # Draw point (considering thickness)
         thickness = -1  # Fills the entire circle (effectively drawing a thick point)
         cv2.circle(image, center, 10, (255, 255, 255), thickness)  # White point
-        hough_img = hough_circle(image, radius=10, shrink_factor=shrink_factor)
+        hough_img = hough_out(image, 10)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
@@ -230,21 +239,20 @@ class TestHoughCircle(unittest.TestCase):
     def test_hough_circle_bad_params(self):
         # Load test image
         img = np.array(Image.open("frog.png").convert("L"))
-
+        edges = np.abs(convolve2d(img, edge_kernel, mode="same", boundary="symm"))
         # Check that it raises an error for bad radius
         with self.assertRaises(ValueError):
-            hough_circle(img, -5)
+            hough_circle(edges, -5)
 
         # Check that it raises an error for bad shrink factor
         with self.assertRaises(ValueError):
-            hough_circle(img, 30, shrink_factor=0)
+            hough_circle(edges, 40, shrink_factor=0)
 
     def test_hough_circle_display(self):
         # Load test image
         img = np.array(Image.open("frog.png").convert("L"))
-
         # Apply hough transform
-        result = hough_circle(img, 30, shrink_factor=shrink_factor)
+        result = hough_out(img, 40)
 
         # Display result
         plt.imshow(result)
@@ -256,7 +264,7 @@ class TestHoughCircle(unittest.TestCase):
     def test_performance():
         start = time.time()
         img = np.array(Image.open("frog.png").convert("L"))
-        hough_img = hough_circle(img, radius=10, shrink_factor=shrink_factor)
+        hough_img = hough_out(img, 40)
         circles = detect_extreme_points(
             hough_img,
             threshold=threshold,
