@@ -1,24 +1,137 @@
 import unittest
 from hough_circle import hough_circle, draw_circle, shrink_image
+from detect_extremes import detect_extreme_points
 import numpy as np
+import time
+import pytest
+from PIL import Image
+import matplotlib.pyplot as plt
+import cv2
+
+
+normalize = False
+threshold = 6
+max_cluster_size = 10
+leap_size = 2
+shrink_factor = 3
 
 
 class TestHoughCircle(unittest.TestCase):
-
-    def test_circle_detection(self):
-        # Generate test image with known circles
-        img = np.zeros((100, 100))
-        draw_circle(img, 50, 50, 20)
-        draw_circle(img, 30, 30, 10)
+    ### shape
+    def test_rectangle_img(self):
+        # Image with two circles
+        img = np.zeros((200, 100))
+        draw_circle(img, 25, 25, 15)
 
         # Detect circles
-        circles = hough_circle(img, radius=21)
+        hough_img = hough_circle(img, radius=15, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
 
-        # Check if expected circles were found
+        # Check if both circles were detected
         self.assertEqual(len(circles), 1)
+        self.assertAlmostEqual(circles[0][0], 25, delta=1)
+        self.assertAlmostEqual(circles[0][1], 25, delta=1)
+
+    def test_slender_img(self):
+        # Image with two circles
+        img = np.zeros((10, 1000))
+        draw_circle(img, 5, 5, 2)
+
+        # Detect circles
+        hough_img = hough_circle(img, radius=2, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
+
+        # Check if both circles were detected
+        self.assertEqual(len(circles), 1)
+        self.assertAlmostEqual(circles[0][0], 5, delta=1)
+        self.assertAlmostEqual(circles[0][1], 5, delta=1)
+
+    ### format
+    def RGB_img():
+        width = 200
+        height = 200
+
+        # Create an empty RGB image
+        image = np.zeros((height, width, 3), dtype=np.uint8)
+
+        # Define circle centers and radius
+        center1 = (50, 50)  # Top-left corner
+        center2 = (150, 150)  # Bottom-right corner
+        radius = 10
+
+        # Draw circles in blue and green
+        cv2.circle(image, center1, radius, (255, 0, 0), -1)  # Blue circle
+        cv2.circle(image, center2, radius, (0, 255, 0), -1)  # Green circle
+
+        hough_img = hough_circle(image, radius=10, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
+
+        # Check if both circles were detected
+        self.assertEqual(len(circles), 2)
         self.assertAlmostEqual(circles[0][0], 50, delta=1)
         self.assertAlmostEqual(circles[0][1], 50, delta=1)
-        self.assertAlmostEqual(circles[0][2], 20, delta=1)
+        self.assertAlmostEqual(circles[1][0], 150, delta=1)
+        self.assertAlmostEqual(circles[1][1], 150, delta=1)
+
+    ### object property
+
+    def circle_thick_line():
+        width = 200
+        height = 200
+
+        # Create an empty RGB image (background color is black)
+        image = np.zeros((height, width, 3), dtype=np.uint8)
+
+        # Circle parameters
+        center = (width // 2, height // 2)  # Center at image center
+        radius = 15
+        thickness = 4  # Line width of the circle
+
+        # Draw circle in white (BGR format)
+        cv2.circle(image, center, radius, (255, 255, 255), thickness)
+
+        hough_img = hough_circle(image, radius=15, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
+
+        # Check if both circles were detected
+        self.assertEqual(len(circles), 1)
+        self.assertAlmostEqual(circles[0][0], 100, delta=1)
+        self.assertAlmostEqual(circles[0][1], 100, delta=1)
+
+    def test_no_circles():
+        img = np.zeros((100, 100))
+        circles = detect_extreme_points(
+            img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
+        assert len(circles) == 0
 
     def test_multiple_circles(self):
         # Image with two circles
@@ -27,7 +140,14 @@ class TestHoughCircle(unittest.TestCase):
         draw_circle(img, 75, 75, 15)
 
         # Detect circles
-        circles = hough_circle(img, radius=15)
+        hough_img = hough_circle(img, radius=15, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
 
         # Check if both circles were detected
         self.assertEqual(len(circles), 2)
@@ -36,77 +156,76 @@ class TestHoughCircle(unittest.TestCase):
         self.assertAlmostEqual(circles[1][0], 75, delta=1)
         self.assertAlmostEqual(circles[1][1], 75, delta=1)
 
-    def test_shrink_image(self):
-        # Generate test image
-        img = np.zeros((100, 100))
-        draw_circle(img, 50, 50, 20)
+    # Test bad input
+    def test_bad_input():
+        with pytest.raises(ValueError):
+            detect_extreme_points(
+                None,
+                threshold=threshold,
+                max_cluster_size=max_cluster_size,
+                leap_size=leap_size,
+                normalize=normalize,
+            )
 
-        # Shrink image
-        img_small = shrink_image(img, 2)
+    ### inference
+    def create_blurred_image_with_circle(
+        width, height, center, radius, blur_kernel_size
+    ):
+        width = 200
+        height = 200
+        center = (50, 50)
+        radius = 15
+        blur_kernel_size = (5, 5)
+        # Create an empty RGB image
+        image = np.zeros((height, width, 3), dtype=np.uint8)
 
-        # Check scaled size
-        self.assertEqual(img_small.shape[0], 50)
-        self.assertEqual(img_small.shape[1], 50)
+        # Draw a white circle (BGR format)
+        cv2.circle(image, center, radius, (255, 255, 255), -1)  # Filled circle
 
-        # Check if circle was properly scaled
-        circles = hough_circle(img_small, radius=10)
-        self.assertAlmostEqual(circles[0][0], 25, delta=1)
-        self.assertAlmostEqual(circles[0][1], 25, delta=1)
+        # Apply Gaussian blur
+        image = cv2.GaussianBlur(image, blur_kernel_size, 0)
+        hough_img = hough_circle(image, radius=15, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
 
+        # Check if both circles were detected
+        self.assertEqual(len(circles), 1)
+        self.assertAlmostEqual(circles[0][0], 50, delta=1)
+        self.assertAlmostEqual(circles[0][1], 50, delta=1)
 
-######################
-import unittest
-from hough_circle import hough_circle
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
+    def draw_thick_point():
+        width = 200
+        height = 200
 
+        # Create an empty RGB image (background color is black)
+        image = np.zeros((height, width, 3), dtype=np.uint8)
 
-# Test on image with known circles
-@pytest.mark.parametrize(
-    "image_file, expected_circles",
-    [
-        ("circles.png", [(50, 50, 20), (100, 150, 30)]),
-        ("circles_large.png", [(100, 120, 50), (200, 250, 80)]),
-    ],
-)
-class TestHoughCircle(unittest.TestCase):
-    # Test no circles
-    def test_no_circles():
-        circles = detect_circles("blank.png")
-        assert len(circles) == 0
+        # Point coordinates (center of the image)
+        center = (width // 2, height // 2)
 
-    def test_hough_circle_on_simple_image(self):
-        # Create a simple test image with a known circle
-        img = np.zeros((100, 100), dtype=np.uint8)
-        cv2.circle(img, (50, 50), 30, 255, -1)
+        # Draw point (considering thickness)
+        thickness = -1  # Fills the entire circle (effectively drawing a thick point)
+        cv2.circle(image, center, 10, (255, 255, 255), thickness)  # White point
+        hough_img = hough_circle(image, radius=10, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
 
-        # Apply hough transform
-        result = hough_circle(img, 30)
+        # Check if both circles were detected
+        self.assertEqual(len(circles), 1)
+        self.assertAlmostEqual(circles[0][0], 100, delta=1)
+        self.assertAlmostEqual(circles[0][1], 100, delta=1)
 
-        # Check that the result contains a circle at the expected location
-        assert (50, 50) in result.circles
-
-        # Optionally check number of circles detected
-        assert len(result.circles) == 1
-
-    def test_detect_known_circles(image_file, expected_circles):
-        circles = detect_circles(image_file)
-        assert len(circles) == len(expected_circles)
-        assert all([c in expected_circles for c in circles])
-
-    def test_hough_circle_on_complex_image(self):
-        # Load a test image with multiple circles
-        # TODO image "circles.png"
-
-        test_img = np.array(Image.open("circles.png").convert("L"))
-
-        # Apply hough transform
-        result = hough_circle(test_img)
-
-        # Check that the expected number of circles are detected
-        # Here we assume the test image contains 3 circles
-        assert len(result.circles) == 3
+    ### general
 
     def test_hough_circle_bad_params(self):
         # Load test image
@@ -120,45 +239,34 @@ class TestHoughCircle(unittest.TestCase):
         with self.assertRaises(ValueError):
             hough_circle(img, 30, shrink_factor=0)
 
+    def test_hough_circle_display(self):
+        # Load test image
+        img = np.array(Image.open("frog.png").convert("L"))
 
-def test_hough_circle_display(self):
-    # Load test image
-    img = np.array(Image.open("frog.png").convert("L"))
+        # Apply hough transform
+        result = hough_circle(img, 30, shrink_factor=shrink_factor)
 
-    # Apply hough transform
-    result = hough_circle(img, 30)
+        # Display result
+        plt.imshow(result)
 
-    # Display result
-    plt.imshow(result)
+        # Check that plot was displayed
+        self.assertTrue(plt.fignum_exists(1))
 
-    # Check that plot was displayed
-    self.assertTrue(plt.fignum_exists(1))
-
-
-# Test bad input
-def test_bad_input():
-    with pytest.raises(ValueError):
-        detect_circles(None)
-
-
-# Test performance
-def test_performance():
-    start = time.time()
-    detect_circles("circles.png")
-    end = time.time()
-    assert (end - start) < 0.5  # complete in under 0.5 sec
+    # Test performance
+    def test_performance():
+        start = time.time()
+        img = np.array(Image.open("frog.png").convert("L"))
+        hough_img = hough_circle(img, radius=10, shrink_factor=shrink_factor)
+        circles = detect_extreme_points(
+            hough_img,
+            threshold=threshold,
+            max_cluster_size=max_cluster_size,
+            leap_size=leap_size,
+            normalize=normalize,
+        )
+        end = time.time()
+        assert (end - start) < 0.5  # complete in under 0.5 sec
 
 
 if __name__ == "__main__":
     unittest.main()
-
-
-###################3
-
-
-# Test different parameter values
-@pytest.mark.parametrize("param, min_expected, max_expected", [(50, 1, 3), (100, 1, 5)])
-def test_param_threshold(param, min_expected, max_expected):
-    circles = detect_circles("circles.png", param=param)
-    assert len(circles) >= min_expected
-    assert len(circles) <= max_expected
