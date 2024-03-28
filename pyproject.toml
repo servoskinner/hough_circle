@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "hough_circle"
+version = "0.1.0"
+description = ""
+repository = "https://github.com/servoskinner/hough_circle"
+authors = ["Fyodor Egorov (Home, Ubuntu) <egorovf9@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.26.4"
+pillow = "^10.2.0"
+scipy = "^1.12.0"
+pytest = "^8.1.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

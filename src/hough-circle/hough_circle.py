@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.signal import convolve2d
-import argparse
 from PIL import Image
 
 
@@ -59,6 +58,11 @@ def draw_circle(canvas, x, y, radius, point_density=2, npoints=None, intensity=N
     """
     if npoints is None:
         npoints = int(np.ceil(2 * np.pi * radius * point_density))
+        npoints = max(npoints, 1)
+
+    if npoints <= 0:
+        return
+
     if intensity is None:
         intensity = 1 / npoints
 
@@ -113,6 +117,9 @@ def shrink_image(image, factor):
 def hough_circle(
     source_img, radius, point_density=2.0, shrink_factor=1.0, conv_mode="same"
 ):
+    if radius < 0:
+        raise ValueError("Radius must be non-negative")
+
     if shrink_factor > 1.0:
         source_img = shrink_image(source_img, shrink_factor)
         radius /= shrink_factor
