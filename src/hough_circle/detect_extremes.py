@@ -69,7 +69,12 @@ def to_bit_array(array, threshold=0.5, normalize=True):
 
 
 def detect_extreme_points(
-    array, threshold=0.8, normalize=False, max_cluster_size=1, leap_size=1
+    array,
+    threshold=0.8,
+    normalize=False,
+    max_cluster_size=1,
+    leap_size=1,
+    shrink_factor=1,
 ):
     """
     Detect peaks on 2d array.
@@ -88,7 +93,7 @@ def detect_extreme_points(
                 )
                 if max(cluster_height, cluster_width) <= max_cluster_size:
                     extrema.append(
-                        center + np.array([0.5, 0.5])
+                        (center + np.array([0.5, 0.5])) * shrink_factor
                     )  # grid origin adjustment - (0, 0) would be top left pixel's
                     #  top left edge, not its center
     return extrema

@@ -1,6 +1,6 @@
 import unittest
-from hough_circle import hough_circle, draw_circle, shrink_image
-from detect_extremes import detect_extreme_points
+from src.hough_circle.hough_circle import hough_circle, draw_circle, shrink_image
+from src.hough_circle.detect_extremes import detect_extreme_points
 import numpy as np
 from time import time
 import pytest
@@ -236,7 +236,7 @@ class TestHoughCircle(unittest.TestCase):
 
     def test_hough_circle_bad_params(self):
         # Load test image
-        img = np.array(Image.open("frog.png").convert("L"))
+        img = np.array(Image.open("test_samples/frog.png").convert("L"))
         edges = np.abs(convolve2d(img, edge_kernel, mode="same", boundary="symm"))
         # Check that it raises an error for bad radius
         with self.assertRaises(ValueError):
@@ -248,7 +248,7 @@ class TestHoughCircle(unittest.TestCase):
 
     def test_hough_circle_display(self):
         # Load test image
-        img = np.array(Image.open("frog.png").convert("L"))
+        img = np.array(Image.open("test_samples/frog.png").convert("L"))
         # Apply hough transform
         result = hough_out(img, 40)
 
@@ -261,7 +261,7 @@ class TestHoughCircle(unittest.TestCase):
     # Test performance
     def test_performance(self):
         start = time()
-        img = np.array(Image.open("frog.png").convert("L"))
+        img = np.array(Image.open("test_samples/frog.png").convert("L"))
         hough_img = hough_out(img, 40)
         circles = detect_extreme_points(
             hough_img,

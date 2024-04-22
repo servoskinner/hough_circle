@@ -55,6 +55,9 @@ def draw_subpixel(canvas, x, y, intensity):
 def draw_circle(canvas, x, y, radius, point_density=2, npoints=None, intensity=None):
     """
     Draw a circle with given center and radius by incrementing cells on canvas.
+
+    Args:
+    canvas
     """
     if npoints is None:
         npoints = int(np.ceil(2 * np.pi * radius * point_density))
@@ -114,11 +117,30 @@ def shrink_image(image, factor):
     return image_shrunk
 
 
+def sobel(source_img, small_kernel=False):
+    if small_kernel:
+        ver_kernel = np.array([[-1, -1], [1, 1]]) / 2
+        hor_kernel = np.array([[-1, 1], [-1, 1]]) / 2
+    else:
+        ver_kernel = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]]) / 4
+        hor_kernel = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]) / 4
+    vedges = np.power(
+        convolve2d(source_img, ver_kernel, mode="same", boundary="symm"), 2
+    )
+    hedges = np.power(
+        convolve2d(source_img, hor_kernel, mode="same", boundary="symm"), 2
+    )
+
+    return np.sqrt(vedges + hedges)
+
+
 def hough_circle(
     source_img, radius, point_density=2.0, shrink_factor=1.0, conv_mode="same"
 ):
     if radius < 0:
         raise ValueError("Radius must be non-negative")
+    if shrink_factor < 1.0:
+        raise ValueError("Shrink factor must be 1 or greater")
 
     if shrink_factor > 1.0:
         source_img = shrink_image(source_img, shrink_factor)
